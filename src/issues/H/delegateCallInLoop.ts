@@ -9,10 +9,10 @@ const issue: RegexIssue = {
          // (for|while|do)            : detects the loop keyword.             "for"
          // [^\(]?(\([^\)]*\))?.?\{   : detects loop conditions.              "(....) {"
          // ([^\}]*\n)*               : detects the line without }.           "......\n"
-         // ([^\}]*\{)                : detects start of the line untile {.   ".......{"
+         // ([^\}]*\{)                : detects start of the line until {.   ".......{"
          // ([^\{\}]*\n)*             : detects the lines without { and }.    "......\n"
          // ([^\{\}]*\}[^\}]*)\n      : detect the line with }.               "...}..\n"
-         // [^\}]*delegatecall        : detect the lien with delegatecall.    "....call"
+         // [^\}]*delegatecall        : detect the line with delegatecall.    "....call"
 };
 
 export default issue;

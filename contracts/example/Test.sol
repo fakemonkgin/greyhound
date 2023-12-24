@@ -4,16 +4,118 @@ interface IChainlinkAggregatorV3 {
     function latestAnswer() external view returns (int256);
 }
 
+
+
 contract Test {
     uint256 a = 0;
     uint256[] b;
 
+    constructor(
+        address _core,
+        address _profitManager,
+        address _credit,
+        address _pegToken
+    ) CoreRef(_core) {
+        profitManager = _profitManager;
+        credit = _credit;
+        pegToken = _pegToken;
+
+        uint256 decimals = uint256(ERC20(_pegToken).decimals());
+        decimalCorrection = 10 ** (18 - decimals);
+    }
+    
+    function recoverAddress() external returns(address) {
+        address profit = msg.sender;
+        address recovered = ecrecover(hash, v, r, s);
+        return recovered;
+    }
+
+     function _enterRebase(address account) internal {
+        uint256 balance = ERC20.balanceOf(account);
+        uint256 currentRebasingSharePrice = rebasingSharePrice();
+        uint256 shares = _balance2shares(balance, currentRebasingSharePrice);
+        uint256 weight = msg.value;
+        uint256 sharesSpent = rebasingSharePrice();
+        uint256 sharesReceived = rebasingSharePrice();
+        rebasingState[account] = RebasingState({
+            isRebasing: 1,
+            nShares: uint248(shares)
+        });
+        sharesDelta -= int256(sharesSpent);
+        sharesDelta += int32(sharesReceived);
+        uint256 debtCeilingAfterDecrement = LendingTerm(gauge).debtCeiling(-int256(weight));
+        updateTotalRebasingShares(currentRebasingSharePrice, int256(shares));
+        updateTotalRebasingShares(currentRebasingSharePrice, -int256(shares));
+        updateTotalRebasingShares(
+                _rebasingSharePrice,
+                -int256(sharesBurnt)
+            );
+        emit RebaseEnter(account, block.timestamp);
+    }
+    
     function test(address iasd) external returns (uint256) {
         return 123;
     }
 
     modifier initializer() {
         _;
+    }
+
+    function state(
+        uint256 proposalId
+    ) public view override returns (ProposalState) {
+        ProposalState status = super.state(proposalId);
+        bytes32 queueid = _timelockIds[proposalId];
+
+        // @dev all proposals that are in this Governor's state should have been created
+        // by the createVeto() method, and therefore should have _timelockIds set, so this
+        // condition check is an invalid state that should never be reached.
+        assert(queueid != bytes32(0));
+
+        // Proposal already executed and stored in state
+        if (status == ProposalState.Executed) {
+            return ProposalState.Executed;
+        }
+        // Proposal cannot be Canceled because there is no public cancel() function.
+        // Vote has just been created, still in waiting period
+        if (status == ProposalState.Pending) {
+            return ProposalState.Pending;
+        }
+
+        // at this stage, status from super can be one of: Active, Succeeded, Defeated
+        // Read timestamp in the timelock to determine the state of the proposal
+        uint256 timelockOperationTimestamp = TimelockController(
+            payable(timelock)
+        ).getTimestamp(queueid);
+
+        // proposal already cleared from the timelock by something else
+        if (timelockOperationTimestamp == 0) {
+            return ProposalState.Canceled;
+        }
+        // proposal already executed in the timelock
+        if (timelockOperationTimestamp == 1) {
+            return ProposalState.Defeated;
+        }
+
+        // proposal still in waiting period in the timelock
+        if (timelockOperationTimestamp > block.timestamp) {
+            // ready to veto
+            // no need for "&& _voteSucceeded(proposalId)" in condition because
+            // veto votes are always succeeded (there is no tallying for 'for'
+            // votes against 'against' votes), the only condition is the quorum.
+            if (_quorumReached(proposalId)) {
+                return ProposalState.Succeeded;
+            }
+            // need more votes to veto
+            else {
+                return ProposalState.Active;
+            }
+        }
+        // proposal is ready to execute in the timelock, the veto
+        // vote did not reach quorum in time.
+        else {
+            return ProposalState.Defeated;
+        }
     }
 
     function initialize() initializer external {}
@@ -89,5 +191,31 @@ contract Test {
 
         } // some comment
         address(this).delegatecall(); // this shouldn't be reported
+    }
+
+      function _getVetoCalls(
+        bytes32 timelockId
+    )
+        internal
+        view
+        returns (
+            address[] memory targets,
+            uint256[] memory values,
+            bytes[] memory calldatas,
+            string memory description
+        )
+    {
+        targets = new address[](1);
+        targets[0] = timelock;
+        values = new uint256[](1); // 0 eth
+        calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(
+            TimelockController.cancel.selector,
+            timelockId
+        );
+        description = string.concat(
+            "Veto proposal for ",
+            string(abi.encodePacked(timelockId))
+        );
     }
 }
