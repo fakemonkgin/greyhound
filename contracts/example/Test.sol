@@ -218,4 +218,75 @@ contract Test {
             string(abi.encodePacked(timelockId))
         );
     }
+
+    function emergencyAction(
+        Call[] calldata calls
+    )
+        external
+        payable
+        onlyCoreRole(CoreRoles.GOVERNOR)
+        returns (bytes[] memory returnData)
+    {
+        returnData = new bytes[](calls.length);
+        for (uint256 i = 0; i < calls.length; i++) {
+            address payable target = payable(calls[i].target);
+            uint256 value = calls[i].value;
+            bytes calldata callData = calls[i].callData;
+
+            (bool success, bytes memory returned) = target.call{value: value}(
+                callData
+            );
+            require(success, "CoreRef: underlying call reverted");
+            returnData[i] = returned;
+        }
+    }
+
+    function callMany(bytes32[] memory loanIds) public {
+        address _auctionHouse = refs.auctionHouse;
+        for (uint256 i = 0; i < loanIds.length; i++) {
+            _call(msg.sender, loanIds[i], _auctionHouse);
+        }
+    }
+
+     function getPendingRewards(
+        address user
+    )
+        external
+        view
+        returns (
+            address[] memory gauges,
+            uint256[] memory creditEarned,
+            uint256 totalCreditEarned
+        )
+    {
+        address _guild = guild;
+        gauges = GuildToken(_guild).userGauges(user);
+        creditEarned = new uint256[](gauges.length);
+
+        for (uint256 i = 0; i < gauges.length; ) {
+            address gauge = gauges[i];
+            uint256 _gaugeProfitIndex = gaugeProfitIndex[gauge];
+            uint256 _userGaugeProfitIndex = userGaugeProfitIndex[user][gauge];
+
+            if (_gaugeProfitIndex == 0) {
+                _gaugeProfitIndex = 1e18;
+            }
+            if (_userGaugeProfitIndex == 0) {
+                _userGaugeProfitIndex = 1e18;
+            }
+            uint256 deltaIndex = _gaugeProfitIndex - _userGaugeProfitIndex;
+            if (deltaIndex != 0) {
+                uint256 _userGaugeWeight = uint256(
+                    GuildToken(_guild).getUserGaugeWeight(user, gauge)
+                );
+                creditEarned[i] = (_userGaugeWeight * deltaIndex) / 1e18;
+                totalCreditEarned += creditEarned[i];
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
 }
