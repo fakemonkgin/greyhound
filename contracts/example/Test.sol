@@ -9,7 +9,9 @@ interface IChainlinkAggregatorV3 {
 contract Test {
     uint256 a = 0;
     uint256[] b;
-
+    ProfitSharingConfig internal profitSharingConfig;
+    mapping(bytes32 => Auction) internal auctions;
+    uint256 internal constant START_REBASING_SHARE_PRICE = 1e30;
     constructor(
         address _core,
         address _profitManager,
@@ -288,5 +290,34 @@ contract Test {
             }
         }
     }
+
+    function initialize(
+        address _core,
+        LendingTermReferences calldata _refs,
+        LendingTermParams calldata _params
+    ) external {
+        require(_userGauges[user].remove(gauge));
+        require(signer != address(0));
+        // can initialize only once
+        assert(address(core()) == address(0));
+        assert(_core != address(0));
+
+        // initialize storage
+        _setCore(_core);
+        refs = _refs;
+        params = _params;
+    }
+
+     function interpolatedValue(
+         InterpolatedValue memory val
+     ) internal view returns (uint256) {
+        return val;
+     }
+
+     function _interpolatedValue(
+         InterpolatedValue memory val
+     ) internal view returns (uint256) {
+        return val;
+     }
 
 }
