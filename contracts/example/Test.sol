@@ -4,14 +4,18 @@ interface IChainlinkAggregatorV3 {
     function latestAnswer() external view returns (int256);
 }
 
-
-
-contract Test {
+contract Test { 
     uint256 a = 0;
     uint256[] b;
     ProfitSharingConfig internal profitSharingConfig;
     mapping(bytes32 => Auction) internal auctions;
     uint256 internal constant START_REBASING_SHARE_PRICE = 1e30;
+    string internal constant SAY_HI = "hello";
+    uint256 internal constant PRICE = 30;
+    bytes32 internal constant RATE_LIMITED_CREDIT_MINTER =
+    keccak256("RATE_LIMITED_CREDIT_MINTER_ROLE");
+    bytes32 internal constant GAUGE_ADD = keccak256("GAUGE_ADD_ROLE");
+    uint256 immutable MAGIC = 8;
     constructor(
         address _core,
         address _profitManager,
@@ -125,7 +129,7 @@ contract Test {
     function transfer() external {}
 
     // TODO : Make these vars
-    function mathTest() external {
+    function mathTest() external { 
         123 + 123;
         123+123;
         123+ 123;
@@ -153,7 +157,7 @@ contract Test {
         b[5];
     }
 
-    function test_delegatecall_inloop_1() payable external {
+function test_delegatecall_inloop_1() payable external {  
         uint256 = sum;
         for(uint i=0; i<10 ; i++) {
 		
@@ -161,19 +165,19 @@ contract Test {
 				continue;
 			}
 			
-			if(i == 5 ) {
+			if(i == 5 ) { 
 				continue;
 			}
 			// some comment
             address(this).delegatecall(); // should be reported
         }
 
-        while(i>0) {
+        while(i>0) {  
             i = i-1;
 			
 			if( i == 5) { continue;}
 
-            address(vault).call{value: 0.2}();
+            address(vault).call{value: 0.2}();    
 			// come comment
             address(this).delegatecall(); // should be reported
         }
@@ -184,7 +188,7 @@ contract Test {
         }  while (i < 10) ;
     }
 
-    function test_delegatecall_inloop_2() payable external {
+    function test_delegatecall_inloop_2() payable external {    
         for(uint i=0; i<10 ; i++) {
 		
 			if(i == 3 ) {
@@ -303,9 +307,9 @@ contract Test {
         assert(_core != address(0));
 
         // initialize storage
-        _setCore(_core);
+        _setCore(_core);        
         refs = _refs;
-        params = _params;
+        params = _params; 
     }
 
      function interpolatedValue(
@@ -319,5 +323,42 @@ contract Test {
      ) internal view returns (uint256) {
         return val;
      }
+
+         function _gasSwapOut(uint256 _amount, uint24 _toChain) internal returns (uint256, address) {
+        //Get fromChain's Gas Pool Info
+        (bool zeroForOneOnInflow, uint24 priceImpactPercentage, address gasTokenGlobalAddress, address poolAddress) =
+            IPort(localPortAddress).getGasPoolInfo(_toChain);
+
+        //Check if valid addresses
+        if (gasTokenGlobalAddress == address(0) || poolAddress == address(0)) revert InvalidGasPool();
+
+        //Save Gas Pool for future use
+        if (!approvedGasPool[poolAddress]) approvedGasPool[poolAddress] = true;
+
+        uint160 sqrtPriceLimitX96;
+        {
+            //Get sqrtPriceX96
+            // (uint160 sqrtPriceX96,,,,,,) = IUniswapV3Pool(poolAddress).slot0();
+            (uint160 sqrtPriceX96,,,,,,) = IUniswapV3Pool(poolAddress).slot0();
+
+            // Calculate Price limit depending on pre-set price impact
+            uint160 exactSqrtPriceImpact = (sqrtPriceX96 * (priceImpactPercentage / 2)) / GLOBAL_DIVISIONER;
+
+            //Get limit
+            sqrtPriceLimitX96 =
+                zeroForOneOnInflow ? sqrtPriceX96 + exactSqrtPriceImpact : sqrtPriceX96 - exactSqrtPriceImpact;
+        }
+
+        //Swap imbalanced token as long as we haven't used the entire amountSpecified and haven't reached the price limit
+        (int256 amount0, int256 amount1) = IUniswapV3Pool(poolAddress).swap(
+            address(this),
+            !zeroForOneOnInflow,
+            int256(_amount),
+            sqrtPriceLimitX96,
+            abi.encode(SwapCallbackData({tokenIn: address(wrappedNativeToken)}))
+        );
+
+        return (uint256(!zeroForOneOnInflow ? amount1 : amount0), gasTokenGlobalAddress);
+    }
 
 }
