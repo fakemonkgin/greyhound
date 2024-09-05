@@ -1,4 +1,4 @@
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.6;
 
 interface IChainlinkAggregatorV3 {
     function latestAnswer() external view returns (int256);
@@ -9,6 +9,8 @@ contract Test {
     uint256[] b;
     ProfitSharingConfig internal profitSharingConfig;
     mapping(bytes32 => Auction) internal auctions;
+
+    address clone = CloneUpgradeable.clone(round);
     uint256 internal constant START_REBASING_SHARE_PRICE = 1e30;
     string internal constant SAY_HI = "hello";
     uint256 internal constant PRICE = 30;
@@ -21,7 +23,11 @@ contract Test {
         address _profitManager,
         address _credit,
         address _pegToken
-    ) CoreRef(_core) {
+    ) CoreRef(_core) TimelockController(
+            _minDelay,
+            new address[](0),
+            new address[](0),
+            address(0)    ) {
         profitManager = _profitManager;
         credit = _credit;
         pegToken = _pegToken;
@@ -36,7 +42,14 @@ contract Test {
         return recovered;
     }
 
-     function _enterRebase(address account) internal {
+    function repay(uint96 _subId, uint256 _amount) external whenNotPaused {
+         mapSupplyPoints[0] = PointVoting(0, 0, uint64(block.timestamp), uint64(block.number), 0);
+          block_slope = (1e18 * uint256(block.number - lastPoint.blockNumber)) / uint256(block.timestamp - lastPoint.ts);
+          uNew.blockNumber = uint64(block.number);
+    
+}
+
+     function _enterRebase(address account) internal whenNotPaused {
         uint256 balance = ERC20.balanceOf(account);
         uint256 currentRebasingSharePrice = rebasingSharePrice();
         uint256 shares = _balance2shares(balance, currentRebasingSharePrice);
@@ -126,7 +139,10 @@ contract Test {
 
     function initialize() initializer external {}
     function init() external { }
-    function transfer() external {}
+    function transfer() external {
+        require(IERC20(fakeToken).balanceOf(address(this)) == 1 ether, "revert");
+        require(token.balanceOf(address(this)) == 100 wei, "revert");
+    }
 
     // TODO : Make these vars
     function mathTest() external { 
@@ -315,7 +331,10 @@ function test_delegatecall_inloop_1() payable external {
      function interpolatedValue(
          InterpolatedValue memory val
      ) internal view returns (uint256) {
+         for (i; i < _swapData.length; i++) {
+         (bool success, ) = _swapData.call{ value: msg.value }();
         return val;
+     }
      }
 
      function _interpolatedValue(
@@ -361,4 +380,28 @@ function test_delegatecall_inloop_1() payable external {
         return (uint256(!zeroForOneOnInflow ? amount1 : amount0), gasTokenGlobalAddress);
     }
 
+    function executeOperation(
+        address[] calldata _assets,
+        uint256[] calldata _amounts,
+        uint256[] calldata _premiums,
+        address _initiator,
+        bytes calldata _params
+    ) external override onlyLendingPool returns (bool) {
+        mintParams.deadline = block.timestamp;
+        require(initiator == address(this), "wrong");
+        if (token == address(WETH)){
+       WETH.withdraw(bal);
+        for (uint8 i; i < _swapData.length; i++) {
+         (bool success, bytes memory res) = _swapData.callTo.call{ value: msg.value }(_swapData.callData);
+        
+       payable(msg.sender).transfer(bal); // <= FOUND
+        }
+     UniV2(router).swapExactTokensForTokens(
+        toSwap, 
+        0, 
+        path, 
+        address(this), 
+        now);
+        }
+    }
 }

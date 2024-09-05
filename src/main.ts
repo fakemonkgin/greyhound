@@ -65,10 +65,16 @@ const main = async (
     });
   });
 
+  if (!issues || !Array.isArray(issues)) {
+    console.error("Issues is undefined or not an array. Please check the import or definition.");
+    return; // 或者抛出错误
+  }
+
   for (const t of Object.values(IssueTypes)) {
+    const filteredIssues = issues.filter(i => i && i.type === t);
     result += analyze(
       files,
-      issues.filter(i => i.type === t),
+      filteredIssues,
       !!githubLink ? githubLink : undefined,
     );
   }
