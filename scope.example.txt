@@ -1,4 +1,1 @@
-example/1.sol
-example/2.sol
-example/3.sol
-example/4.sol
+example/Test.sol
