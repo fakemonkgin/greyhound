@@ -1,28 +1,43 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer'); // 用于处理文件上传
 const { exec } = require('child_process');
 
 const app = express();
 app.use(express.json()); // 解析 JSON 请求体
 
-// 上传文件并启动分析
-app.post('/api/analyze', async (req, res) => {
+// 使用 multer 进行文件上传处理
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
+// 上传文件并存储在 Greyhound 的 contracts 文件夹
+app.post('/api/upload', upload.array('files'), async (req, res) => {
   try {
-    const { fileNames } = req.body;
-    
-    if (!fileNames || fileNames.length === 0) {
-      return res.status(400).json({ message: 'No files provided' });
+    const files = req.files;
+
+    if (!files || files.length === 0) {
+      return res.status(400).json({ message: 'No files uploaded' });
     }
+
+    const fileNames = [];
+
+    // 将文件保存到 Greyhound 的 contracts 文件夹
+    files.forEach(file => {
+      const filePath = path.join(__dirname, 'contracts', file.originalname);
+      fs.writeFileSync(filePath, file.buffer); // 将文件写入 contracts 文件夹
+      fileNames.push(file.originalname);
+    });
 
     // 将文件名写入 scope.example.txt 文件
     const scopeFilePath = path.join(__dirname, 'contracts', 'scope.example.txt');
-    fs.writeFileSync(scopeFilePath, fileNames.join('\n'));
+    fs.writeFileSync(scopeFilePath, fileNames.join('\n')); // 写入文件名到 scope.example.txt
 
     // 调用原有的 analyze 脚本
     await new Promise((resolve, reject) => {
       exec('yarn analyze contracts scope.example.txt', (error, stdout, stderr) => {
         if (error) {
+          console.error('Audit error:', stderr);
           return reject(`Audit error: ${stderr}`);
         }
         resolve(stdout);
@@ -38,7 +53,8 @@ app.post('/api/analyze', async (req, res) => {
       return res.status(500).json({ message: 'Audit failed to generate report' });
     }
   } catch (error) {
-    return res.status(500).json({ message: 'Error processing audit', error: error.toString() });
+    console.error('Error processing files:', error);
+    return res.status(500).json({ message: 'Error processing files', error: error.toString() });
   }
 });
 
