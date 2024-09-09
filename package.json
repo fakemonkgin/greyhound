@@ -7,9 +7,10 @@
   "license": "Unlicensed",
   "private": true,
   "scripts": {
-    "analyze": "ts-node src/index.ts",
-    "start": "yarn analyze contracts scope.example.txt",
-    "start-server": "node server.js"
+    "analyze": "ts-node src/index.ts",  
+    "start": "node server.js",  
+    "analyze-contracts": "yarn analyze contracts scope.example.txt", 
+    "start-server": "node server.js"  
   },
   "dependencies": {
     "@types/node": "^7.0.5",

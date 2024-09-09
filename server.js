@@ -1,7 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const multer = require('multer'); // 用于处理文件上传
+const multer = require('multer');
 const { exec } = require('child_process');
 
 const app = express();
@@ -22,15 +22,21 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
 
     const fileNames = [];
 
+    // 确保 contracts 文件夹存在
+    const contractsDir = path.join(__dirname, 'contracts');
+    if (!fs.existsSync(contractsDir)) {
+      fs.mkdirSync(contractsDir, { recursive: true });
+    }
+
     // 将文件保存到 Greyhound 的 contracts 文件夹
     files.forEach(file => {
-      const filePath = path.join(__dirname, 'contracts', file.originalname);
+      const filePath = path.join(contractsDir, file.originalname);
       fs.writeFileSync(filePath, file.buffer); // 将文件写入 contracts 文件夹
       fileNames.push(file.originalname);
     });
 
     // 将文件名写入 scope.example.txt 文件
-    const scopeFilePath = path.join(__dirname, 'contracts', 'scope.example.txt');
+    const scopeFilePath = path.join(contractsDir, 'scope.example.txt');
     fs.writeFileSync(scopeFilePath, fileNames.join('\n')); // 写入文件名到 scope.example.txt
 
     // 调用原有的 analyze 脚本
