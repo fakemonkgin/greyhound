@@ -7,16 +7,17 @@
   "license": "Unlicensed",
   "private": true,
   "scripts": {
-    "analyze": "ts-node src/index.ts",  
-    "start": "node server.js",  
-    "analyze-contracts": "yarn analyze contracts scope.example.txt", 
-    "start-server": "node server.js"  
+    "analyze": "ts-node src/index.ts",
+    "start": "node server.js",
+    "analyze-contracts": "yarn analyze contracts scope.example.txt",
+    "start-server": "node server.js"
   },
   "dependencies": {
     "@types/node": "^7.0.5",
     "@types/semver": "^7.3.13",
     "@typescript-eslint/eslint-plugin": "4.28.4",
     "@typescript-eslint/parser": "4.28.4",
+    "axios": "^1.7.7",
     "commander": "^11.0.0",
     "eslint": "^8.25.0",
     "eslint-config-prettier": "^8.3.0",
@@ -29,6 +30,8 @@
     "eslint-plugin-promise": "^5.1.0",
     "eslint-plugin-simple-import-sort": "^7.0.0",
     "eslint-plugin-standard": "5.0.0",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
     "prettier": "^2.7.1",
     "semver": "^7.3.8",
     "solc": "^0.8.17",
@@ -66,6 +69,5 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"
   },
-  "devDependencies": {},
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

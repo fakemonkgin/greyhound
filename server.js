@@ -65,7 +65,7 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
 });
 
 // 启动服务器并监听端口
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`Greyhound API is running on port ${PORT}`);
 });
