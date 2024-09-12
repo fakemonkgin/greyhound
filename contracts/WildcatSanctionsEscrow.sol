@@ -1,27 +1,43 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract AssemblyReturnTest {
-    uint256 public result;
+contract TestArrayFunction {
 
-    // 一个不安全的 Yul block 中有 return 语句
-    function unsafeAssembly() public returns (uint256) {
-        assembly {
-            let x := 10
-            let y := 20
-            let sum := add(x, y)
-            return(0, 0x20) // <= 这里会被 AST 规则识别为问题
+    // 这是不安全的函数，接受一个没有限制大小的数组
+    function unsafeArrayFunction(bytes[] calldata data) external {
+        for (uint256 i = 0; i < data.length; i++) {
+            // 处理每个元素
+            (bool success, bytes memory result) = address(this).delegatecall(data[i]);
+            require(success, "Call failed");
         }
     }
 
-    // 安全的 Yul block 没有 return 语句
-    function safeAssembly() public returns (uint256) {
-        assembly {
-            let x := 10
-            let y := 20
-            let sum := add(x, y)
-            mstore(0x40, sum)  // 没有 return，这个不会触发问题
+    // 这是一个安全的函数，限制了数组长度
+    function safeArrayFunction(bytes[] calldata data) external {
+        require(data.length <= 100, "Array too large"); // 添加限制，避免过大的数组
+        for (uint256 i = 0; i < data.length; i++) {
+            // 处理每个元素
+            (bool success, bytes memory result) = address(this).delegatecall(data[i]);
+            require(success, "Call failed");
         }
-        return result;  // 这是 Solidity 的 return，不会被 AST 检测为问题
     }
+
+    // 不涉及数组参数的函数，不会被标记
+    function regularFunction(address target) external {
+        (bool success, ) = target.call("");
+        require(success, "Call failed");
+    }
+
+    function multicall(bytes[] calldata data) external payable returns (bytes[] memory results) { // <= FOUND
+         results = new bytes[](data.length);
+         for (uint256 i = 0; i < data.length; i++) {
+            (bool success, bytes memory result) = address(this).delegatecall(data[i]);
+            if (!success) {               
+               assembly {
+                   revert(add(result, 0x20), mload(result))
+               }
+           }
+             results[i] = result;
+         }
+     }
 }

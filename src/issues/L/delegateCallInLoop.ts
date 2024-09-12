@@ -2,7 +2,7 @@ import { IssueTypes, RegexIssue } from '../../types';
 
 const issue: RegexIssue = {
   regexOrAST: 'Regex',
-  type: IssueTypes.H,
+  type: IssueTypes.L,
   title: 'Using `delegatecall` inside a loop',
   impact: 'When calling `delegatecall` the same `msg.value` amount will be accredited multiple times.',
   regex: /(for|while|do)[^\(]?(\([^\)]*\))?.?\{(([^\}]*\n)*(([^\}]*\{)([^\{\}]*\n)*([^\{\}]*\}[^\}]*)\n))*[^\}]*delegatecall/g,
