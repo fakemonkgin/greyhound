@@ -1,43 +1,42 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract TestArrayFunction {
+contract TestContract {
+    uint256 public minimumValue;
+    uint256 public maximumValue;
+    uint256 public cap;
+    uint256 public threshold;
 
-    // 这是不安全的函数，接受一个没有限制大小的数组
-    function unsafeArrayFunction(bytes[] calldata data) external {
-        for (uint256 i = 0; i < data.length; i++) {
-            // 处理每个元素
-            (bool success, bytes memory result) = address(this).delegatecall(data[i]);
-            require(success, "Call failed");
-        }
+    address public owner;
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not the owner");
+        _;
     }
 
-    // 这是一个安全的函数，限制了数组长度
-    function safeArrayFunction(bytes[] calldata data) external {
-        require(data.length <= 100, "Array too large"); // 添加限制，避免过大的数组
-        for (uint256 i = 0; i < data.length; i++) {
-            // 处理每个元素
-            (bool success, bytes memory result) = address(this).delegatecall(data[i]);
-            require(success, "Call failed");
-        }
+    constructor() {
+        owner = msg.sender;
     }
 
-    // 不涉及数组参数的函数，不会被标记
-    function regularFunction(address target) external {
-        (bool success, ) = target.call("");
-        require(success, "Call failed");
+    // 没有 require 检查的设置函数
+    function setMinimumValue(uint256 _minimumValue) public onlyOwner {
+        minimumValue = _minimumValue;  // <= 测试目标：没有 require 检查
     }
 
-    function multicall(bytes[] calldata data) external payable returns (bytes[] memory results) { // <= FOUND
-         results = new bytes[](data.length);
-         for (uint256 i = 0; i < data.length; i++) {
-            (bool success, bytes memory result) = address(this).delegatecall(data[i]);
-            if (!success) {               
-               assembly {
-                   revert(add(result, 0x20), mload(result))
-               }
-           }
-             results[i] = result;
-         }
-     }
+    // 有 require 检查的设置函数
+    function setMaximumValue(uint256 _maximumValue) public onlyOwner {
+        require(_maximumValue > 0, "Maximum value must be greater than 0");
+        maximumValue = _maximumValue;  // <= 测试目标：有 require 检查
+    }
+
+    // 没有 require 检查的设置函数
+    function setCap(uint256 _cap) public onlyOwner {
+        cap = _cap;  // <= 测试目标：没有 require 检查
+    }
+
+    // 有 require 检查的设置函数
+    function setThreshold(uint256 _threshold) public onlyOwner {
+        require(_threshold > minimumValue, "Threshold must be greater than the minimum value");
+        threshold = _threshold;  // <= 测试目标：有 require 检查
+    }
 }
